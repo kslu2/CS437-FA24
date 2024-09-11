@@ -53,6 +53,7 @@ def scanning():
             x, y = trig_loc(data1, cur_angle - 90)
             if detect(model=model, labels=labels) and x < 40:
                 # TODO: stop for a second
+                pass
 
             print("Obstacle distance is " + str(x) + "CM x and " + str(y) + "CM y")
             obj_x, obj_y = obj_distance(cur_x, cur_y, x, y, facing)
@@ -76,6 +77,8 @@ def move():
         new_direction = check_rotate(next)
         if new_direction != facing:
             # TODO: rotate if needed, move by 1 unit
+            pass
+        
         cur_x = next[0]
         cur_y = next[1]
         facing = new_direction
