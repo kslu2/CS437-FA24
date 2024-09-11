@@ -54,7 +54,6 @@ def scanning():
             if detect(model=model, labels=labels) and x < 40:
                 # TODO: stop for a second
                 pass
-
             print("Obstacle distance is " + str(x) + "CM x and " + str(y) + "CM y")
             obj_x, obj_y = obj_distance(cur_x, cur_y, x, y, facing)
             if obj_x < dest_x and obj_y < dest_y:
@@ -74,27 +73,65 @@ def move():
     while path and len(path) > 0:
         next = path[0]
         path = path[1:]
-        new_direction = check_rotate(next)
+        new_direction, lorr = check_rotate(next)
         if new_direction != facing:
-            # TODO: rotate if needed, move by 1 unit
-            pass
-        
+            running = False
+            if lorr == 1:
+                turn_right()
+            elif lorr == 0:
+                turn_left()
+        # TODO: rotate if needed, move by 1 unit
+        PWM.setMotorModel(650,650,650,650)
+        time.sleep(1)
+        PWM.setMotorModel(0,0,0,0)
         cur_x = next[0]
         cur_y = next[1]
         facing = new_direction
+        running = True
 
 
+def turn_right():
+        n = 28
+        PWM.setMotorModel(0,0,0,0)
+        time.sleep(1)
+        for i in range(0,n,1):
+                PWM.setMotorModel(3000,3000,-3000,-3000)
+                print ("The car is turning right")
+                time.sleep(0.01)
+        PWM.setMotorModel(0,0,0,0)
+
+def turn_left():
+        n = 15
+        for i in range(0,n,1):
+                PWM.setMotorModel(-4000,-4000,4000,4000) 
+                print ("The car is turning left")
+                time.sleep(0.01)
+        PWM.setMotorModel(0,0,0,0)
+
+# returns new direction, 0 for left turn, 1 for right turn
 def check_rotate(next):
     diff_x = next[0] - cur_x
     diff_y = next[1] - cur_y
-    if cur_y == 1:
-        return 0
-    elif cur_y == -1:
-        return 2
-    elif cur_x == 1:
-        return 1
-    elif cur_x == -1:
-        return 3
+    if diff_y == 1:
+        if facing == 1:
+            return 1, 0
+        elif facing == 3: 
+            return 1, 1
+    elif diff_y == -1:
+        if facing == 1:
+            return 1, 1
+        elif facing == 3: 
+            return 1, 0
+    elif diff_x == 1:
+        if facing == 0:
+            return 1, 1
+        elif facing == 2: 
+            return 1, 0
+    elif diff_x == -1:
+        if facing == 0:
+            return 1, 0
+        elif facing == 2: 
+            return 1, 1
 
 
 # 0 = North, 1 = East, 2 = South, 3 = West
@@ -116,8 +153,8 @@ def obj_distance(cur_x, cur_y, x, y, facing):
 
 def trig_loc(dist, angle):
     angle_rad = math.radians(angle)
-    y = dist * math.sin(angle_rad)
-    x = dist * math.cos(angle_rad)
+    y = dist * math.sin(angle_rad)/20
+    x = dist * math.cos(angle_rad)/20
     return x, y
 
 
@@ -173,8 +210,8 @@ if __name__ == '__main__':
     t2.daemon = True
     t3.daemon = True
 
-    dest_x = 99
-    dest_y = 99
+    dest_x = 100/20
+    dest_y = 200/20
     obj_map = [[0 for _ in range(dest_x)] for _ in range(dest_y)]
     path = astar_search([cur_x, cur_y], obj_map)
 
