@@ -55,7 +55,7 @@ def scanning():
         if data1 != 0:
             x, y = trig_loc(data1, cur_angle - 90)
             #if detect(model=model, labels=labels) and x < 40:
-                # TODO: stop for a second
+                time.sleep(2)
             #     pass
             obj_x, obj_y = obj_distance(cur_x, cur_y, x, y, facing)
             print("Obstacle distance is " + str(obj_x) + "CM x and " + str(obj_y) + "CM y")
@@ -97,7 +97,7 @@ def move(step, new_direction, lorr):
     cur_x = step[0]
     cur_y = step[1]
     print("Current Location Updated to " + str(cur_x) + " " + str(cur_y))
-    time.sleep(1.5)
+    time.sleep(0.5)
     facing = new_direction
 
 
