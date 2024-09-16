@@ -22,8 +22,9 @@ cur_y = 0
 facing = 0
 path = None
 cur_angle = 90
-dest_x = 100//20
-dest_y = 200//20
+dest_x = 15
+dest_y = 21
+path_taken = []
 
 #model = tf.saved_model.load("ssd_mobilenet_v2_coco_2018_03_29/saved_model")
 #inference = model.signatures['serving_default']
@@ -48,33 +49,41 @@ def left_right():
 
 def scanning():
     global cur_x, cur_y, obj_map, path, running, dest_x, dest_y, facing
+    last_read = 100
+    count = 0
     while running:
-        last_read = ultrasonic.get_distance()
         data1 = ultrasonic.get_distance()
-        print(data1)
         if data1 != 0:
             x, y = trig_loc(data1, cur_angle - 90)
             #if detect(model=model, labels=labels) and x < 40:
-                time.sleep(2)
+                #time.sleep(2)
             #     pass
             obj_x, obj_y = obj_distance(cur_x, cur_y, x, y, facing)
-            print("Obstacle distance is " + str(obj_x) + "CM x and " + str(obj_y) + "CM y")
-            print(str(dest_x) + " " + str(dest_y))
             if obj_x < dest_x and obj_y < dest_y and obj_x >= 0 and obj_y >= 0:
                 obj_map[obj_x][obj_y] = 1
-            if data1 < 40 and last_read < 65 and last_read != 0:
                 new_path = astar_search([cur_x, cur_y], obj_map)
                 path.clear()
+                if (new_path is None):
+                    print(obj_map)
                 path.extend(new_path)
-            last_read = ultrasonic.get_distance()
-            step = path[0]
-            new_direction, lorr = check_rotate(step, cur_x, cur_y, facing)
-            if new_direction == -1:
-                continue
-            path = path[1:]
-            move(step, new_direction, lorr)
-            if cur_x == dest_x and cur_y == dest_y:
+            last_read = data1
+            if (len(path) == 0):
                 running = False
+                print(path)
+                print(obj_map)
+            count += 1
+            if count >= 5:
+                verify(path, obj_map)
+                count = 0
+                step = path[0]
+                new_direction, lorr = check_rotate(step, cur_x, cur_y, facing)
+                if new_direction == -1:
+                    continue
+                path_taken.append(step)
+                path = path[1:]
+                move(step, new_direction, lorr)
+                if cur_x == dest_x and cur_y == dest_y:
+                    running = False
     pwm.setServoPwm('0', 90)
     pwm.setServoPwm('1', 90)
     PWM.setMotorModel(0, 0, 0, 0)
@@ -116,6 +125,19 @@ def turn_left():
         PWM.setMotorModel(-2000,-2000,2000,2000) 
         time.sleep(0.01)
     PWM.setMotorModel(0,0,0,0)
+
+
+def verify(path, obj_map):
+    for i in range(len(path)):
+        step = path[i]
+        x = step[0]
+        y = step[1]
+        if obj_map[x][y] == 1:
+            print("Failed on step " + str(step))
+            print(obj_map)
+            return True
+    return False
+
 
 # returns new direction, 0 for left turn, 1 for right turn
 def check_rotate(next, x, y, face):
@@ -171,8 +193,8 @@ def obj_distance(cur_x, cur_y, x, y, facing):
 
 def trig_loc(dist, angle):
     angle_rad = math.radians(angle)
-    y = dist * math.cos(angle_rad)/20
-    x = dist * math.sin(angle_rad)/20
+    y = dist * math.cos(angle_rad)/10
+    x = dist * math.sin(angle_rad)/10
     return int(x), int(y)
 
 
@@ -221,6 +243,7 @@ def astar_search(start, obj_map):
 # Main program logic follows:
 
 if __name__ == '__main__':
+    '''
     t1 = threading.Thread(target=left_right)
     t2 = threading.Thread(target=scanning)
         
@@ -246,3 +269,5 @@ if __name__ == '__main__':
     pwm.setServoPwm('0', 90)
     pwm.setServoPwm('1', 90)
     PWM.setMotorModel(0, 0, 0, 0)
+    '''
+    
