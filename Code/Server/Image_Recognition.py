@@ -9,10 +9,9 @@ inference = model.signatures['serving_default']
 labels = {13: 'stop sign'}
 picam2 = Picamera2()
 os.environ["LIBCAMERA_LOG_LEVELS"] = "3"
-Picamera2.set_logging(Picamera2.ERROR)
+picam2.set_logging(Picamera2.ERROR)
 picam2.start_preview(Preview.NULL)
-
-def detect(model, labels):
+def detect():
     picam2.start_and_capture_file("image.jpg")
     image = cv2.imread("image.jpg")
     if image is None:
@@ -20,10 +19,10 @@ def detect(model, labels):
     input_tensor = tf.convert_to_tensor(image)
     input_tensor = input_tensor[tf.newaxis, ...]
     
-    objects = model(input_tensor)
+    objects = inference(input_tensor)
     detection_classes = objects['detection_classes'][0].numpy().astype(np.int32)
     detection_scores = objects['detection_scores'][0].numpy()
-
+    print(detection_classes)
     for i in range(len(detection_classes)):
         if detection_classes[i] == 13 and detection_scores[i] > 0.5:
             return True
