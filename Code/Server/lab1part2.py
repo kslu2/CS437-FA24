@@ -52,7 +52,7 @@ def detect():
     return False
 
 def scanning():
-    last_read = 100
+    # last_read = 100 # not used
     count = 0
     while running:
         data1 = ultrasonic.get_distance()
@@ -66,13 +66,15 @@ def scanning():
                 new_path = astar_search([cur_x, cur_y], obj_map)
                 path.clear()
                 path.extend(new_path)
-            last_read = data1
+            # last_read = data1
         
         # Error handling for if we arrive at the destination
         if (len(path) == 0):
             running = False
-            print(path_taken)
-            print(obj_map)
+            print("Path:", path_taken)
+            for i in range(len(obj_map)):
+                print(obj_map[i])
+            print()
         count += 1
 
         # Only run moving code every so often to give scanning more time
@@ -191,6 +193,7 @@ def manhattan(cur, dst):
 def astar_search(start, obj_map):
     queue = []
     visited = set()
+    success = False
     m = len(obj_map)
     n = len(obj_map[0])
     goal = [m - 1, n - 1]
@@ -209,7 +212,8 @@ def astar_search(start, obj_map):
                 path.append(cur)
                 cur = prev[tuple(cur)]
             path.reverse()
-            return path
+            success = True
+            break
         
         # Search in all directions until we arrive at goal
         for dir in directions:
@@ -221,7 +225,11 @@ def astar_search(start, obj_map):
                     g[tuple(move)] = g[tuple(cur)] + 1
                     f[tuple(move)] = g[tuple(move)] + manhattan(move, goal)
                     heapq.heappush(queue, (f[tuple(move)], move))
-    return None
+
+    if success:
+        return path
+    else:
+        return None
         
 
 # Main program logic follows:
