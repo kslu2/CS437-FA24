@@ -1,12 +1,12 @@
 import time
-import threading
-import math
 import heapq
+import os
 import tensorflow as tf
 import numpy as np
+import cv2
+import argparse
 
-#from picamera2 import Picamera2, Preview
-#from Image_Recognition import detect
+from picamera2 import Picamera2, Preview
 from Motor import *            
 from Ultrasonic import *
 from servo import *
@@ -22,100 +22,110 @@ cur_y = 0
 facing = 0
 path = None
 cur_angle = 90
-dest_x = 100//20
-dest_y = 200//20
+dest_x = 150//25
+dest_y = 150//25
+path_taken = []
 
-#model = tf.saved_model.load("ssd_mobilenet_v2_coco_2018_03_29/saved_model")
-#inference = model.signatures['serving_default']
-#labels = {13: 'stop sign'}
+model = tf.saved_model.load("ssd_mobilenet_v2_coco_2018_03_29/saved_model")
+inference = model.signatures['serving_default']
+labels = {13: 'stop sign'}
+picam2 = Picamera2()
+os.environ["LIBCAMERA_LOG_LEVELS"] = "3"
+picam2.set_logging(Picamera2.ERROR)
+picam2.start_preview(Preview.NULL)
 
-def left_right():
-    global running, cur_angle
-    while running:
-        for i in range(50, 130, 1):
-            pwm.setServoPwm('0', i)
-            cur_angle = i
-            time.sleep(0.01)
-        for i in range(130, 50, -1):
-            pwm.setServoPwm('0', i)
-            cur_angle = i
-            time.sleep(0.01)
-                
-    pwm.setServoPwm('0', 90)
-    pwm.setServoPwm('1', 90)
-    PWM.setMotorModel(0, 0, 0, 0)        
-
+def detect():
+    picam2.start_and_capture_file("image.jpg")
+    image = cv2.imread("image.jpg")
+    if image is None:
+        return False
+    input_tensor = tf.convert_to_tensor(image)
+    input_tensor = input_tensor[tf.newaxis, ...]
+    
+    objects = inference(input_tensor)
+    detection_classes = objects['detection_classes'][0].numpy().astype(np.int32)
+    detection_scores = objects['detection_scores'][0].numpy()
+    print(f"Detected: {detection_classes}")
+    for i in range(len(detection_classes)):
+        if detection_classes[i] == 13 and detection_scores[i] > 0.5:
+            return True
+    return False
 
 def scanning():
-    global cur_x, cur_y, obj_map, path, running, dest_x, dest_y, facing
+    last_read = 100
+    count = 0
     while running:
-        last_read = ultrasonic.get_distance()
         data1 = ultrasonic.get_distance()
-        print(data1)
+        # Make sure the read is valid
         if data1 != 0:
-            x, y = trig_loc(data1, cur_angle - 90)
-            #if detect(model=model, labels=labels) and x < 40:
-                # TODO: stop for a second
-            #       pass
-            obj_x, obj_y = obj_distance(cur_x, cur_y, x, y, facing)
-            print("Obstacle distance is " + str(obj_x) + "CM x and " + str(obj_y) + "CM y")
-            print(str(dest_x) + " " + str(dest_y))
-            if obj_x < dest_x and obj_y < dest_y and obj_x >= 0 and obj_y >= 0:
+            obj_x, obj_y = obj_distance(cur_x, cur_y, 0, data1//25, facing)
+            # if the object is within our range and it is not a stop sign, mark on the map
+            if obj_x < dest_x and obj_y < dest_y and obj_x >= 0 and obj_y >= 0 and not detect():
                 obj_map[obj_x][obj_y] = 1
-            if data1 < 40 and last_read < 65 and last_read != 0:
+                # Recalculate shortest path
                 new_path = astar_search([cur_x, cur_y], obj_map)
                 path.clear()
                 path.extend(new_path)
-            last_read = ultrasonic.get_distance()
-        step = path[0]
-        new_direction, lorr = check_rotate(step, cur_x, cur_y, facing)
-        if new_direction == -1:
-            continue
-        path = path[1:]
-        move(step, new_direction, lorr)
-        if cur_x == dest_x and cur_y == dest_y:
+            last_read = data1
+        
+        # Error handling for if we arrive at the destination
+        if (len(path) == 0):
             running = False
+            print(path_taken)
+            print(obj_map)
+        count += 1
+
+        # Only run moving code every so often to give scanning more time
+        if count >= 3:
+            if detect() and data1 < 20:
+                print("Found Stop Sign")
+                time.sleep(5)
+            count = 0
+            step = path[0]
+            # Check if we need to rotate left or right (lorr) and which direction
+            new_direction, lorr = check_rotate(step, cur_x, cur_y, facing)
+            if new_direction == -1:
+                continue
+            path_taken.append(step)
+            path = path[1:]
+            # Move in direction
+            move(step, new_direction, lorr)
+            if cur_x == dest_x and cur_y == dest_y:
+                running = False
     pwm.setServoPwm('0', 90)
     pwm.setServoPwm('1', 90)
     PWM.setMotorModel(0, 0, 0, 0)
 
 
 def move(step, new_direction, lorr):
-    global cur_x, cur_y, facing
-    #print("Moving to " + str(next[0]) + " " + str(next[1]))
-    #print("From " + str(cur_x) + " " + str(cur_y))
+    # Turn if needed
     if new_direction != facing:
         if lorr == 1:
             turn_right()
-            #print("Turning Right")
         elif lorr == 0:
             turn_left()
-            #print("Turning Left")
+    # Move 25 cm
     PWM.setMotorModel(700,700,700,700)
-    time.sleep(1.1)   
+    time.sleep(1.5)   
     PWM.setMotorModel(0,0,0,0)
     cur_x = step[0]
     cur_y = step[1]
     print("Current Location Updated to " + str(cur_x) + " " + str(cur_y))
-    time.sleep(1.5)
     facing = new_direction
 
 
 def turn_right():
-    n = 51
-    PWM.setMotorModel(0,0,0,0)
-    time.sleep(1)
-    for i in range(0,n,1):
-        PWM.setMotorModel(2000,2000,-2000,-2000)
-        time.sleep(0.01)
+    # In-place right turn
+    PWM.setMotorModel(2000, 2000, -2000, -2000)
+    time.sleep(0.9)
     PWM.setMotorModel(0,0,0,0)
 
 def turn_left():
-    n = 51
-    for i in range(0,n,1):
-        PWM.setMotorModel(-2000,-2000,2000,2000) 
-        time.sleep(0.01)
+    # In-place left turn
+    PWM.setMotorModel(-2000, -2000, 2000, 2000)
+    time.sleep(0.9)
     PWM.setMotorModel(0,0,0,0)
+
 
 # returns new direction, 0 for left turn, 1 for right turn
 def check_rotate(next, x, y, face):
@@ -153,6 +163,7 @@ def check_rotate(next, x, y, face):
 
 
 # 0 = North, 1 = East, 2 = South, 3 = West
+# Calculates where the object is w.r.t where we are facing
 def obj_distance(cur_x, cur_y, x, y, facing):
     if facing == 0:
         obj_x = cur_x + x
@@ -167,13 +178,6 @@ def obj_distance(cur_x, cur_y, x, y, facing):
         obj_x = cur_x - y
         obj_y = cur_y + x
     return int(obj_x), int(obj_y)    
-
-
-def trig_loc(dist, angle):
-    angle_rad = math.radians(angle)
-    y = dist * math.cos(angle_rad)/20
-    x = dist * math.sin(angle_rad)/20
-    return int(x), int(y)
 
 
 # cur -> [x, y] representing current coordinates
@@ -192,13 +196,14 @@ def astar_search(start, obj_map):
     goal = [m - 1, n - 1]
     heapq.heappush(queue, (0, start))
     visited.add(tuple(start))
-    directions = [[1, 0], [0, 1], [-1, 0], [0, -1]]
     g = {tuple(start): 0}
     f = {tuple(start): manhattan(start, goal)}
+    directions = [[1, 0], [0, 1], [-1, 0], [0, -1]]
     prev = dict()
     while queue:
         cur = heapq.heappop(queue)[1]
         if cur == goal:
+            # Generate path
             path = []
             while tuple(cur) in prev.keys():
                 path.append(cur)
@@ -206,6 +211,7 @@ def astar_search(start, obj_map):
             path.reverse()
             return path
         
+        # Search in all directions until we arrive at goal
         for dir in directions:
             move = [cur[0] + dir[0], cur[1] + dir[1]]
             if (0 <= move[0] < m) and (0 <= move[1] < n) and obj_map[move[0]][move[1]] == 0:
@@ -221,27 +227,23 @@ def astar_search(start, obj_map):
 # Main program logic follows:
 
 if __name__ == '__main__':
-    t1 = threading.Thread(target=left_right)
-    t2 = threading.Thread(target=scanning)
-        
-    t1.daemon = True
-    t2.daemon = True
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument("--destination", type=str, default="4,5")
+    args = argparser.parse_args()
+    if args.destination:
+        dest_x, dest_y = map(int, args.destination.split(","))
+    
+    print(f"Started Running to {dest_x}, {dest_y}")
 
     obj_map = [[0 for _ in range(dest_y)] for _ in range(dest_x)]
     path = astar_search([cur_x, cur_y], obj_map)
-    print("Started Running")
-    t1.start()
-    t2.start()
+    scanning()
         
     try:
         while True:
             time.sleep(0.1)
     except KeyboardInterrupt:
-        running = False
-        #picam2.stop()
-    #picam2.stop()    
-    t1.join()
-    t2.join()
+        running = False  
          
     pwm.setServoPwm('0', 90)
     pwm.setServoPwm('1', 90)
