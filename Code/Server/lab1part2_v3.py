@@ -23,19 +23,24 @@ facing = 0
 path = None
 cur_angle = 90
 dest_x = 150//25
-dest_y = 150//25
+dest_y = 100//25
 path_taken = []    
 
 def scanning():
+    global cur_x, cur_y, obj_map, path, running, dest_x, dest_y, facing
     last_read = 100
     count = 0
+    stopped = False
     while running:
         data1 = ultrasonic.get_distance()
+        detected = False
+        if data1 < 40:
+            detected = detect()
         # Make sure the read is valid
         if data1 != 0:
             obj_x, obj_y = obj_distance(cur_x, cur_y, 0, data1//25, facing)
             # if the object is within our range and it is not a stop sign, mark on the map
-            if obj_x < dest_x and obj_y < dest_y and obj_x >= 0 and obj_y >= 0 and not detect():
+            if obj_x < dest_x and obj_y < dest_y and obj_x >= 0 and obj_y >= 0 and not detected:
                 obj_map[obj_x][obj_y] = 1
                 # Recalculate shortest path
                 new_path = astar_search([cur_x, cur_y], obj_map)
@@ -46,15 +51,15 @@ def scanning():
         # Error handling for if we arrive at the destination
         if (len(path) == 0):
             running = False
-            print(path_taken)
             print(obj_map)
         count += 1
 
         # Only run moving code every so often to give scanning more time
-        if count >= 3:
-            if detect() and data1 < 20:
+        if count >= 2:
+            if detected and not stopped:
                 print("Found Stop Sign")
                 time.sleep(5)
+                stopped = True
             count = 0
             step = path[0]
             # Check if we need to rotate left or right (lorr) and which direction
@@ -68,11 +73,12 @@ def scanning():
             if cur_x == dest_x and cur_y == dest_y:
                 running = False
     pwm.setServoPwm('0', 90)
-    pwm.setServoPwm('1', 90)
+    pwm.setServoPwm('1', 100)
     PWM.setMotorModel(0, 0, 0, 0)
 
 
 def move(step, new_direction, lorr):
+    global cur_x, cur_y, facing
     # Turn if needed
     if new_direction != facing:
         if lorr == 1:
@@ -85,7 +91,7 @@ def move(step, new_direction, lorr):
     PWM.setMotorModel(0,0,0,0)
     cur_x = step[0]
     cur_y = step[1]
-    print("Current Location Updated to " + str(cur_x) + " " + str(cur_y))
+    #print("Current Location Updated to " + str(cur_x) + " " + str(cur_y))
     facing = new_direction
 
 
@@ -173,6 +179,7 @@ def astar_search(start, obj_map):
     visited.add(tuple(start))
     g = {tuple(start): 0}
     f = {tuple(start): manhattan(start, goal)}
+    directions = [[0, 1], [1, 0], [-1, 0], [0, -1]]
     directions = [[1, 0], [0, 1], [-1, 0], [0, -1]]
     prev = dict()
     while queue:
@@ -202,6 +209,8 @@ def astar_search(start, obj_map):
 # Main program logic follows:
 
 if __name__ == '__main__':
+    pwm.setServoPwm('0', 90)
+    pwm.setServoPwm('1', 100)
     obj_map = [[0 for _ in range(dest_y)] for _ in range(dest_x)]
     path = astar_search([cur_x, cur_y], obj_map)
     print("Started Running")
@@ -214,5 +223,5 @@ if __name__ == '__main__':
         running = False  
          
     pwm.setServoPwm('0', 90)
-    pwm.setServoPwm('1', 90)
+    pwm.setServoPwm('1', 100)
     PWM.setMotorModel(0, 0, 0, 0)
