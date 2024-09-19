@@ -23,8 +23,8 @@ cur_y = 0
 facing = 0
 path = None
 cur_angle = 90
-dest_x = 150//25
-dest_y = 150//25
+dest_x = 150
+dest_y = 100
 path_taken = []
 
 model = tf.saved_model.load("ssd_mobilenet_v2_coco_2018_03_29/saved_model")
@@ -68,7 +68,8 @@ def detect():
     end_y = 2 * block_height # End at the third row
 
     # Crop the region that covers the 5 center blocks
-    cropped_image = image[start_y-block_height:end_y+block_height, start_x-block_width:end_x+block_width]
+    cropped_image = image[start_y : end_y , start_x : end_x]
+    cv2.imwrite("cropped_image.jpg", cropped_image)
 
     # input_tensor = tf.convert_to_tensor(image)
     input_tensor = tf.convert_to_tensor(cropped_image)
@@ -120,11 +121,23 @@ def scanning():
             # if data1 < 40:
             #     detected = detect()
             # if detected and not stopped:
-            if data1 < 40 and detect():
+            data1 = float("inf")
+            for i in range(5):
+                cur_val = ultrasonic.get_distance()
+                if cur_val != 0:
+                    data1 = min(data1, cur_val)
+            if data1 == float("inf"):
+                data1 = 0
+            logger.info("Data 1 is " + str(data1))
+            if data1 < 50 and data1 != 0 and detect():
                 # print("Found Stop Sign")
                 logger.info("Found Stop Sign")
                 time.sleep(5)
-                # stopped = True
+                # stopped s = True
+            logger.info("Path: " + str(path_taken))
+            for i in range(len(obj_map)):
+                logger.info(obj_map[i])
+            logger.info("")
             count = 0
             step = path[0]
             # Check if we need to rotate left or right (lorr) and which direction
@@ -138,7 +151,7 @@ def scanning():
             if cur_x == dest_x and cur_y == dest_y:
                 running = False
     pwm.setServoPwm('0', 90)
-    pwm.setServoPwm('1', 90) # TODO: 100?
+    pwm.setServoPwm('1', 100) # TODO: 100?
     PWM.setMotorModel(0, 0, 0, 0)
 
 
@@ -164,13 +177,13 @@ def move(step, new_direction, lorr):
 def turn_right():
     # In-place right turn
     PWM.setMotorModel(2000, 2000, -2000, -2000)
-    time.sleep(0.9)
+    time.sleep(0.7)
     PWM.setMotorModel(0,0,0,0)
 
 def turn_left():
     # In-place left turn
     PWM.setMotorModel(-2000, -2000, 2000, 2000)
-    time.sleep(0.9)
+    time.sleep(0.7)
     PWM.setMotorModel(0,0,0,0)
 
 
@@ -248,15 +261,15 @@ def astar_search(start, obj_map):
     f = {tuple(start): manhattan(start, goal)}
     directions = [[1, 0], [0, 1], [-1, 0], [0, -1]]
     prev = dict()
+    temp_path = []
     while queue:
         cur = heapq.heappop(queue)[1]
         if cur == goal:
             # Generate path
-            path = []
             while tuple(cur) in prev.keys():
-                path.append(cur)
+                temp_path.append(cur)
                 cur = prev[tuple(cur)]
-            path.reverse()
+            temp_path.reverse()
             success = True
             break
         
@@ -272,7 +285,7 @@ def astar_search(start, obj_map):
                     heapq.heappush(queue, (f[tuple(move)], move))
 
     if success:
-        return path
+        return temp_path
     else:
         return None
         
@@ -281,18 +294,25 @@ def astar_search(start, obj_map):
 
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
-    argparser.add_argument("--destination", type=str, default="4,5")
+    argparser.add_argument("--destination", type=str, default="150,100")
     args = argparser.parse_args()
     if args.destination:
         dest_x, dest_y = map(int, args.destination.split(","))
     dest_x = dest_x // 25
     dest_y = dest_y // 25
-    
+    pwm.setServoPwm('0', 100)
+    pwm.setServoPwm('1', 100)
     print(f"Started Running to {dest_x}, {dest_y}")
     logger.info(f"Started Running to {dest_x}, {dest_y}")
 
     obj_map = [[0 for _ in range(dest_y)] for _ in range(dest_x)]
     path = astar_search([cur_x, cur_y], obj_map)
+
+    logger.info("Path: " + str(path))
+    for i in range(len(obj_map)):
+        logger.info(obj_map[i])
+    logger.info("")
+
     scanning()
         
     try:
@@ -301,6 +321,6 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         running = False  
          
-    pwm.setServoPwm('0', 90)
-    pwm.setServoPwm('1', 90) # TODO: 100?
+    pwm.setServoPwm('0', 100)
+    pwm.setServoPwm('1', 100)
     PWM.setMotorModel(0, 0, 0, 0)
