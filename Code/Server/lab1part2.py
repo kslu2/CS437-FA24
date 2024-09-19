@@ -5,6 +5,7 @@ import tensorflow as tf
 import numpy as np
 import cv2
 import argparse
+import logging
 
 from picamera2 import Picamera2, Preview
 from Motor import *            
@@ -30,16 +31,37 @@ model = tf.saved_model.load("ssd_mobilenet_v2_coco_2018_03_29/saved_model")
 inference = model.signatures['serving_default']
 labels = {13: 'stop sign'}
 picam2 = Picamera2()
+
+
 os.environ["LIBCAMERA_LOG_LEVELS"] = "3"
 picam2.set_logging(Picamera2.ERROR)
 picam2.start_preview(Preview.NULL)
+logging.getLogger().setLevel(logging.CRITICAL)
+
 
 def detect():
     picam2.start_and_capture_file("image.jpg")
     image = cv2.imread("image.jpg")
     if image is None:
         return False
-    input_tensor = tf.convert_to_tensor(image)
+    
+    height, width, _ = image.shape
+
+    # Divide the image into a 3x3 grid, calculate block size
+    block_height = height // 3
+    block_width = width // 3
+
+    # Crop the 5 center blocks: top-middle, middle-left, middle-center, middle-right, and bottom-middle
+    start_x = block_width    # Start at the second column
+    start_y = block_height   # Start at the second row
+    end_x = 2 * block_width  # End at the third column
+    end_y = 2 * block_height # End at the third row
+
+    # Crop the region that covers the 5 center blocks
+    cropped_image = image[start_y-block_height:end_y+block_height, start_x-block_width:end_x+block_width]
+
+    # input_tensor = tf.convert_to_tensor(image)
+    input_tensor = tf.convert_to_tensor(cropped_image)
     input_tensor = input_tensor[tf.newaxis, ...]
     
     objects = inference(input_tensor)
@@ -54,17 +76,15 @@ def detect():
 def scanning():
     global cur_x, cur_y, obj_map, path, running, dest_x, dest_y, facing
     count = 0
-    stopped = False
+    # stopped = False
     while running:
         data1 = ultrasonic.get_distance()
-        detected = False
-        if data1 < 40:
-            detected = detect()
+        
         # Make sure the read is valid
         if data1 != 0:
             obj_x, obj_y = obj_distance(cur_x, cur_y, 0, data1//25, facing)
             # if the object is within our range and it is not a stop sign, mark on the map
-            if obj_x < dest_x and obj_y < dest_y and obj_x >= 0 and obj_y >= 0 and not detected:
+            if obj_x < dest_x and obj_y < dest_y and obj_x >= 0 and obj_y >= 0:
                 obj_map[obj_x][obj_y] = 1
                 # Recalculate shortest path
                 new_path = astar_search([cur_x, cur_y], obj_map)
@@ -82,10 +102,14 @@ def scanning():
 
         # Only run moving code every so often to give scanning more time
         if count >= 2:
-            if detected and not stopped:
+            # detected = False
+            # if data1 < 40:
+            #     detected = detect()
+            # if detected and not stopped:
+            if data1 < 40 and detect():
                 print("Found Stop Sign")
                 time.sleep(5)
-                stopped = True
+                # stopped = True
             count = 0
             step = path[0]
             # Check if we need to rotate left or right (lorr) and which direction
@@ -99,7 +123,7 @@ def scanning():
             if cur_x == dest_x and cur_y == dest_y:
                 running = False
     pwm.setServoPwm('0', 90)
-    pwm.setServoPwm('1', 90)
+    pwm.setServoPwm('1', 90) # TODO: 100?
     PWM.setMotorModel(0, 0, 0, 0)
 
 
@@ -261,5 +285,5 @@ if __name__ == '__main__':
         running = False  
          
     pwm.setServoPwm('0', 90)
-    pwm.setServoPwm('1', 90)
+    pwm.setServoPwm('1', 90) # TODO: 100?
     PWM.setMotorModel(0, 0, 0, 0)
