@@ -38,6 +38,16 @@ picam2.set_logging(Picamera2.ERROR)
 picam2.start_preview(Preview.NULL)
 logging.getLogger().setLevel(logging.CRITICAL)
 
+logger = logging.getLogger("my_logger")
+logger.setLevel(logging.INFO)
+file_handler = logging.FileHandler("my_log_file.log")
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
+logger.info("This is an info message for the log.")
+logger.warning("This is a warning message.")
+logger.error("This is an error message.")
+
 
 def detect():
     picam2.start_and_capture_file("image.jpg")
@@ -67,7 +77,7 @@ def detect():
     objects = inference(input_tensor)
     detection_classes = objects['detection_classes'][0].numpy().astype(np.int32)
     detection_scores = objects['detection_scores'][0].numpy()
-    print(f"Detected: {detection_classes}")
+    # print(f"Detected: {detection_classes}")
     for i in range(len(detection_classes)):
         if detection_classes[i] == 13 and detection_scores[i] > 0.5:
             return True
@@ -94,10 +104,14 @@ def scanning():
         # Error handling for if we arrive at the destination
         if (len(path) == 0):
             running = False
-            print("Path:", path_taken)
+            # print("Path:", path_taken)
+            # for i in range(len(obj_map)):
+            #     print(obj_map[i])
+            # print()
+            logger.info("Path: " + str(path_taken))
             for i in range(len(obj_map)):
-                print(obj_map[i])
-            print()
+                logger.info(obj_map[i])
+            logger.info("")
         count += 1
 
         # Only run moving code every so often to give scanning more time
@@ -107,7 +121,8 @@ def scanning():
             #     detected = detect()
             # if detected and not stopped:
             if data1 < 40 and detect():
-                print("Found Stop Sign")
+                # print("Found Stop Sign")
+                logger.info("Found Stop Sign")
                 time.sleep(5)
                 # stopped = True
             count = 0
@@ -141,7 +156,8 @@ def move(step, new_direction, lorr):
     PWM.setMotorModel(0,0,0,0)
     cur_x = step[0]
     cur_y = step[1]
-    print("Current Location Updated to " + str(cur_x) + " " + str(cur_y))
+    # print("Current Location Updated to " + str(cur_x) + " " + str(cur_y))
+    logger.info("Current Location Updated to " + str(cur_x) + " " + str(cur_y))
     facing = new_direction
 
 
@@ -273,6 +289,7 @@ if __name__ == '__main__':
     dest_y = dest_y // 25
     
     print(f"Started Running to {dest_x}, {dest_y}")
+    logger.info(f"Started Running to {dest_x}, {dest_y}")
 
     obj_map = [[0 for _ in range(dest_y)] for _ in range(dest_x)]
     path = astar_search([cur_x, cur_y], obj_map)
