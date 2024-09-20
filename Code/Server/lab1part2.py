@@ -16,6 +16,8 @@ ultrasonic=Ultrasonic()
 PWM=Motor()  
 pwm=Servo()
 
+PWM.setMotorModel(0, 0, 0, 0)
+
 running = True
 obj_map = None
 cur_x = 0
@@ -54,25 +56,24 @@ def detect():
     image = cv2.imread("image.jpg")
     if image is None:
         return False
+
+    cropping = False
     
-    height, width, _ = image.shape
+    if cropping:
+        height, width, _ = image.shape
+        # Divide the image into a 3x3 grid, calculate block size
+        block_height = height // 3
+        block_width = width // 3
+        # Crop the 5 center blocks: top-middle, middle-left, middle-center, middle-right, and bottom-middle
+        start_x = block_width    # Start at the second column
+        start_y = block_height   # Start at the second row
+        end_x = 2 * block_width  # End at the third column
+        end_y = 2 * block_height # End at the third row
+        # Crop the region that covers the 5 center blocks
+        image = image[start_y : end_y , start_x : end_x]
+        cv2.imwrite("cropped_image.jpg", image)
 
-    # Divide the image into a 3x3 grid, calculate block size
-    block_height = height // 3
-    block_width = width // 3
-
-    # Crop the 5 center blocks: top-middle, middle-left, middle-center, middle-right, and bottom-middle
-    start_x = block_width    # Start at the second column
-    start_y = block_height   # Start at the second row
-    end_x = 2 * block_width  # End at the third column
-    end_y = 2 * block_height # End at the third row
-
-    # Crop the region that covers the 5 center blocks
-    cropped_image = image[start_y : end_y , start_x : end_x]
-    cv2.imwrite("cropped_image.jpg", cropped_image)
-
-    # input_tensor = tf.convert_to_tensor(image)
-    input_tensor = tf.convert_to_tensor(cropped_image)
+    input_tensor = tf.convert_to_tensor(image)
     input_tensor = input_tensor[tf.newaxis, ...]
     
     objects = inference(input_tensor)
@@ -122,7 +123,7 @@ def scanning():
             #     detected = detect()
             # if detected and not stopped:
             data1 = float("inf")
-            for i in range(5):
+            for i in range(20):
                 cur_val = ultrasonic.get_distance()
                 if cur_val != 0:
                     data1 = min(data1, cur_val)
