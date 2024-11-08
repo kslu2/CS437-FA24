@@ -1,0 +1,11 @@
+python basicDiscovery.py \
+  -e "a1riphw90uetyv-ats.iot.us-east-2.amazonaws.com" \
+  -r "./keys/AmazonRootCA1.pem" \
+  -c "./cert/certificate_0.pem" \
+  -k "./cert/device_0.private.pem" \
+  -n "device_0" \
+  -t "customTopic" \
+  -M "TestTest" \
+  --sensorData "Temperature: 22C" \
+  --deviceStatus "active" \
+  --sequence 1
