@@ -1,0 +1,16 @@
+{
+  "component" :{
+    "com.example.greengrass-pubsub-component": {
+      "author": "Kevin",
+      "version": "NEXT_PATCH",
+      "build": {
+        "build_system" :"zip"
+      },
+      "publish": {
+        "bucket": "aws-greengrass-component-artefacts",
+        "region": "us-east-2"
+      }
+    }
+  },
+  "gdk_version": "1.0.8"
+}
