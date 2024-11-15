@@ -28,13 +28,14 @@ MAX_DISCOVERY_RETRIES = 10
 GROUP_CA_PATH = "./groupCA/"
 
 # Read in command-line parameters
+
 parser = argparse.ArgumentParser()
-parser.add_argument("-e", "--endpoint", action="store", required=True, dest="host", help="Your AWS IoT custom endpoint")
-parser.add_argument("-r", "--rootCA", action="store", required=True, dest="rootCAPath", help="Root CA file path")
-parser.add_argument("-c", "--cert", action="store", dest="certificatePath", help="Certificate file path")
-parser.add_argument("-k", "--key", action="store", dest="privateKeyPath", help="Private key file path")
-parser.add_argument("-n", "--thingName", action="store", dest="thingName", default="Bot", help="Targeted thing name")
-parser.add_argument("-t", "--topic", action="store", dest="topic", default="sdk/test/Python", help="Targeted topic")
+#parser.add_argument("-e", "--endpoint", action="store", required=True, dest="host", help="Your AWS IoT custom endpoint")
+#parser.add_argument("-r", "--rootCA", action="store", required=True, dest="rootCAPath", help="Root CA file path")
+#parser.add_argument("-c", "--cert", action="store", dest="certificatePath", help="Certificate file path")
+#parser.add_argument("-k", "--key", action="store", dest="privateKeyPath", help="Private key file path")
+#parser.add_argument("-n", "--thingName", action="store", dest="thingName", default="Bot", help="Targeted thing name")
+#parser.add_argument("-t", "--topic", action="store", dest="topic", default="sdk/test/Python", help="Targeted topic")
 parser.add_argument("-m", "--mode", action="store", dest="mode", default="both",
                     help="Operation modes: %s"%str(AllowedActions))
 parser.add_argument("-M", "--message", action="store", dest="message", default="Hello World!",
@@ -45,17 +46,17 @@ parser.add_argument("--deviceStatus", action="store", dest="deviceStatus", defau
                     help="Status of the device (e.g., active, inactive)")
 parser.add_argument("--sequence", action="store", dest="sequence", type=int, default=1, 
                     help="Sequence number for the message")
-parser.add_argument("-p", "--print_discover_resp_only", action="store_true", dest="print_only", default=False)
+#parser.add_argument("-p", "--print_discover_resp_only", action="store_true", dest="print_only", default=False)
 
-args = parser.parse_args()
-host = args.host
-rootCAPath = args.rootCAPath
-certificatePath = args.certificatePath
-privateKeyPath = args.privateKeyPath
-clientId = args.thingName
-thingName = args.thingName
-topic = args.topic
-print_only = args.print_only
+args = argparse.parse_args()
+host = 'a1riphw90uetyv-ats.iot.us-east-2.amazonaws.com'
+rootCAPath = './keys/AmazonRootCA1.pem'
+certificatePath = './cert/certificate_9.pem'
+privateKeyPath = './cert/device_9.private.pem'
+clientId = 'device_9'
+thingName = 'device_9'
+topic = 'test'
+print_only = False
 
 if args.mode not in AllowedActions:
     parser.error("Unknown --mode option %s. Must be one of %s" % (args.mode, str(AllowedActions)))
