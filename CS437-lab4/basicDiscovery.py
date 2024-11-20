@@ -31,8 +31,8 @@ GROUP_CA_PATH = "./groupCA/"
 parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--endpoint", action="store", dest="host", help="Your AWS IoT custom endpoint", default="a1riphw90uetyv-ats.iot.us-east-2.amazonaws.com")
 parser.add_argument("-r", "--rootCA", action="store", dest="rootCAPath", help="Root CA file path", default="./keys/AmazonRootCA1.pem")
-parser.add_argument("-c", "--cert", action="store", dest="certificatePath", help="Certificate file path", default="./cert/certificate_9.pem")
-parser.add_argument("-k", "--key", action="store", dest="privateKeyPath", help="Private key file path", default="./cert/device_9.private.pem")
+parser.add_argument("-c", "--cert", action="store", dest="certificatePath", help="Certificate file path", default="./cert/certificate_8.pem")
+parser.add_argument("-k", "--key", action="store", dest="privateKeyPath", help="Private key file path", default="./cert/device_8.private.pem")
 parser.add_argument("-n", "--thingName", action="store", dest="thingName", default="device_9", help="Targeted thing name")
 parser.add_argument("-t", "--topic", action="store", dest="topic", default="test", help="Targeted topic")
 parser.add_argument("-m", "--mode", action="store", dest="mode", default="both",
@@ -90,7 +90,7 @@ backOffCore = ProgressiveBackOffCore()
 
 # Discover GGCs
 discoveryInfoProvider = DiscoveryInfoProvider()
-discoveryInfoProvider.configureEndpoint(host)
+discoveryInfoProvider.configureEndpoint('a1riphw90uetyv-ats.iot.us-east-2.amazonaws.com')
 discoveryInfoProvider.configureCredentials(rootCAPath, certificatePath, privateKeyPath)
 discoveryInfoProvider.configureTimeout(10)  # 10 sec
 
@@ -100,7 +100,7 @@ groupCA = None
 coreInfo = None
 while retryCount != 0:
     try:
-        discoveryInfo = discoveryInfoProvider.discover(thingName)
+        discoveryInfo = discoveryInfoProvider.discover('device_9')
         caList = discoveryInfo.getAllCas()
         coreList = discoveryInfo.getAllCores()
 
@@ -140,6 +140,7 @@ if not discovered:
         sys.exit(0)
     print("Discovery failed after %d retries. Exiting...\n" % (MAX_DISCOVERY_RETRIES))
     sys.exit(-1)
+
 
 # Iterate through all connection options for the core and use the first successful one
 myAWSIoTMQTTClient = AWSIoTMQTTClient(clientId)

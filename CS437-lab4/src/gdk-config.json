@@ -1,10 +1,10 @@
 {
-  "component" :{
+  "component": {
     "com.example.greengrass-pubsub-component": {
       "author": "Kevin",
       "version": "NEXT_PATCH",
       "build": {
-        "build_system" :"zip"
+        "build_system": "zip"
       },
       "publish": {
         "bucket": "aws-greengrass-component-artefacts",
