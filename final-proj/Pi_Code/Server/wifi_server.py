@@ -1,6 +1,7 @@
 import socket
 import subprocess
 import time
+import signal
 import tensorflow as tf
 import numpy as np
 import cv2
@@ -13,13 +14,12 @@ from Ultrasonic import *
 from servo import *
 
 import numpy as np
-
+PWM.setMotorModel(0, 0, 0, 0)
 # Initialize components
 ultrasonic = Ultrasonic()
 PWM = Motor()
-picam2 = Picamera2()
 
-HOST = "192.168.0.104"  # Replace with your Pi's IP
+HOST = "100.69.37.118"  # Replace with your Pi's IP
 PORT = 65432            # Port for communication
 direction = "Stopped"
 ultrasonicData = 0
@@ -36,12 +36,11 @@ labels = {1: 'person'}
 picam2 = Picamera2()
 picam2.start_preview(Preview.NULL)
 picam2.start()
-
 # Function to capture frames and create a GIF
 def capture_and_create_gif():
-    gif_path = "/home/pi/intruder.gif"
+    gif_path = "intruder.gif"
     frames = []
-
+    picam2.stop()
     # Configure camera settings
     camera_config = picam2.create_video_configuration(main={"size": (640, 480)})
     picam2.configure(camera_config)
@@ -103,8 +102,7 @@ def detect():
 
 
 # Function to send GIF to the Electron app
-def send_gif_to_server(gif_path):
-    url = "http://192.168.0.102:3000/upload"  # Replace with your Electron app's server IP and port
+def send_gif_to_server(gif_path, url):
     files = {'file': open(gif_path, 'rb')}
     data = {'alert': 'intruder_detected'}
     
@@ -114,20 +112,36 @@ def send_gif_to_server(gif_path):
     except Exception as e:
         print("Failed to send GIF:", e)
 
+server_socket = None
+def shutdown_server(signum, frame):
+    global server_socket
+    print("\nShutting down server...")
+    if server_socket:
+        server_socket.close()  # Close the socket
+    sys.exit(0)  # Exit the program
+
+# Register the signal handler
+signal.signal(signal.SIGINT, shutdown_server)
+
 # Socket communication for car control and intruder detection
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    server_socket = s
     s.bind((HOST, PORT))
     s.listen()
+    print("Code Started")
     try:
         while True:
             client, clientInfo = s.accept()
             data = client.recv(1024)  # Receive data
             if data != b"":
-                if data == b'forward\r\n':
+                if data != b'update':
+                    print(data)
+                if data == b'forward':
                     PWM.setMotorModel(700, 700, 700, 700)
                     print("forward")
                     direction = "Forward"
-                elif data == b'reverse\r\n':
+                    PWM.setMotorModel(0, 0, 0, 0)
+                elif data == b'reverse':
                     if direction == "Forward":
                         PWM.setMotorModel(0, 0, 0, 0)
                         direction = "Stopped"
@@ -136,29 +150,31 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                         PWM.setMotorModel(-700, -700, -700, -700)
                         direction = "Reverse"
                         print("Reverse")
-                elif data == b'left\r\n':
+                    PWM.setMotorModel(0, 0, 0, 0)
+                elif data == b'left':
                     direction = "Turning Left"
                     PWM.setMotorModel(-2000, -2000, 2000, 2000)
                     print("Left")
-                elif data == b'right\r\n':
+                    PWM.setMotorModel(0, 0, 0, 0)
+                elif data == b'right':
                     PWM.setMotorModel(2000, 2000, -2000, -2000)
                     print("Right")
+                    PWM.setMotorModel(0, 0, 0, 0)
                     direction = "Turning Right"
-                elif data == b'cameraCheck\r\n' or detect():
+                elif data == b'detect' or detect():
                     print("Intruder detected!")
                     gif_path = capture_and_create_gif()
-                    send_gif_to_server(gif_path)
-                elif data == b'update\r\n':
+                    client_url = client.recv(1024).decode('utf-8').strip()
+                    print(client_url)
+                    send_gif_to_server(gif_path, client_url)
+                    picam2.start()
+                elif data == b'update':
                     raw_cpu_temperature = subprocess.getoutput("cat /sys/class/thermal/thermal_zone0/temp")
                     cpu_temperature = str(round(float(raw_cpu_temperature) / 1000, 2))
                     ultrasonicData = str(ultrasonic.get_distance())
                     
                     dataToSend = f"{direction}-{ultrasonicData}-{cpu_temperature}"
                     client.sendall(dataToSend.encode())
-                elif data == b'detect\r\n':
-                    print("Intruder detected!")
-                    gif_path = capture_and_create_gif()
-                    send_gif_to_server(gif_path)
     except Exception as e:
         print(e)
     finally:
