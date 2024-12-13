@@ -4,7 +4,7 @@ document.onkeyup = resetKey;
 var server_port = 65432;
 //var server_addr = "192.168.0.104";     // the IP address of your Raspberry PI
 
-var server_addr = "172.16.200.187"; // the IP address of your Raspberry PI
+var server_addr = "100.69.37.118"; // the IP address of your Raspberry PI
 
 var refreshIntervalId;
 var toggle = false;
@@ -24,14 +24,17 @@ function client(input) {
   client.on("data", (data) => {
     strData = data.toString();
     arr = strData.split("-");
+    console.log("hi hi");
     document.getElementById("direction").innerHTML = arr[0];
     document.getElementById("ulrasonic_data").innerHTML = arr[1];
     document.getElementById("temperature").innerHTML = arr[2];
-    document.getElementById("intruderGif").src =
-      "./uploads/intruder.gif?" + new Date().getTime();
+    document.getElementById("intruderGif").src = "./uploads/intruder.gif?t=" + new Date().getTime();
+    document.getElementById("intruderImage").src = "./uploads/intruder.jpg?t=" + new Date().getTime();
+    console.log(document.getElementById("intruderGif").src);
+    console.log(document.getElementById("intruderImage").src);
 
-    client.end();
-    client.destroy();
+    // client.end();
+    // client.destroy();
   });
   client.on("end", () => {
     console.log("disconnected from server");
@@ -58,12 +61,14 @@ function updateKey(e) {
     // right (d)
     document.getElementById("rightArrow").style.color = "green";
     client("right");
-    c;
   } else if (e.keyCode == "81") {
     // camera check (q)
-    document.getElementById("rightArrow").style.color = "green";
-    client("cameraCheck");
-    c;
+    // document.getElementById("rightArrow").style.color = "green";
+    client("detect");
+    document.getElementById("intruderGif").src = "./uploads/intruder.gif?t=" + new Date().getTime();
+    document.getElementById("intruderImage").src = "./uploads/intruder.jpg?t=" + new Date().getTime();
+    console.log(document.getElementById("intruderGif").src);
+    console.log(document.getElementById("intruderImage").src);
   }
 }
 
@@ -90,3 +95,14 @@ function update_data() {
     clearInterval(refreshIntervalId);
   }
 }
+
+function updateImages() {
+    setInterval(function() {
+        document.getElementById("intruderGif").src = "./uploads/intruder.gif?t=" + new Date().getTime();
+        document.getElementById("intruderImage").src = "./uploads/intruder.jpg?t=" + new Date().getTime();
+        console.log(document.getElementById("intruderGif").src);
+        console.log(document.getElementById("intruderImage").src);
+    }, 2000); // Updates every 500ms (half a second)
+}
+
+updateImages();

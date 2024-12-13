@@ -30,15 +30,42 @@ function createWindow() {
 
   // Setup the Express server for handling GIF uploads
   serverApp.post("/upload", upload.single("file"), (req, res) => {
-    console.log(`Received file: ${req.file.originalname}`);
+    console.log(`[${new Date().toISOString()}] Received file: ${req.file.originalname}`);
+    if (req.file.originalname.endsWith(".jpg")) {
+      // Move the uploaded file to a permanent location as intruder.jpg
+      const filePath = path.join(__dirname, "uploads", "intruder.jpg");
+      fs.renameSync(req.file.path, filePath);
+      // Notify the renderer process about the new JPG
+      // console.log(`Sending JPG path to renderer: ${filePath}`);
+      mainWindow.webContents.send("new-image", filePath);
+    } else if (req.file.originalname.endsWith(".gif")) {
+      // Move the uploaded file to a permanent location as intruder.gif
+      const filePath = path.join(__dirname, "uploads", "intruder.gif");
+      fs.renameSync(req.file.path, filePath);
+      // Notify the renderer process about the new GIF
+      // console.log(`Sending GIF path to renderer: ${filePath}`);
+      mainWindow.webContents.send("new-gif", filePath);
+      mainWindow.webContents.executeJavaScript(`
+        new Notification('Security Alert', {
+          body: 'Spot intruder!!',
+          icon: '${filePath}'
+        });
+      `);
+    } else {
+      // If the file is neither a JPG nor a GIF, send an error response
+      console.log("Unsupported file type");
+      res.status(400).send("Unsupported file type");
+      return;
+    }
 
-    // Move the uploaded file to a permanent location
-    const gifPath = path.join(__dirname, "uploads", "intruder.gif");
-    fs.renameSync(req.file.path, gifPath);
+    // // Move the uploaded file to a permanent location
+    // // const gifPath = path.join(__dirname, "uploads", "intruder.gif");
+    // const gifPath = path.join(__dirname, "uploads", "intruder.jpg");
+    // fs.renameSync(req.file.path, gifPath);
 
-    // Notify the renderer process about the new GIF
-    console.log(`Sending GIF path to renderer: ${gifPath}`);
-    mainWindow.webContents.send("new-gif", gifPath);
+    // // Notify the renderer process about the new GIF
+    // console.log(`Sending GIF path to renderer: ${gifPath}`);
+    // mainWindow.webContents.send("new-gif", gifPath);
 
     res.send("File uploaded successfully");
   });

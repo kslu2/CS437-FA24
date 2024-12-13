@@ -5,6 +5,12 @@
     <style>
       .container {
         display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 20px;
+      }
+      .image-container {
+        flex: 1;
       }
     </style>
     <link
@@ -16,19 +22,19 @@
   </head>
 
   <body>
-    <div class="container">
+    <!-- <div class="container">
       <div class="jumbotron">
         <h2>CS498: IoT -- Lab 2</h2>
 
-        <!-- <video class="center" width="600" height="400" controls>
+        <video class="center" width="600" height="400" controls>
         <source src="samplevid.mp4" type="video/mp4">
           Your browser does not support the video tag.
-      </video> -->
+      </video>
         <img src="./media/default_background.png" id="pics" />
       </div>
-    </div>
+    </div> -->
 
-    <div class="row">
+    <!-- <div class="row">
       <div class="container">
         <div class="jumbotron text-center col-md-6">
           <span>&nbsp;&nbsp;</span>
@@ -58,19 +64,16 @@
             <span id="direction_dot" style="color: Green">&bull;</span> Car
             Direction: <span id="direction">None</span>
             <br />
-            <!-- <span id="speed_dot" style="color:green">&bull;</span> Speed: <span id="speed">0.0</span>   -->
-            <!-- <br> -->
             <span id="distance_dot" style="color: green">&bull;</span>
             Ultrasonic data: <span id="ulrasonic_data">0.0</span>
             <br />
             <span id="temprature_dot" style="color: green">&bull;</span> Pi
             Temp: <span id="temperature">0.0</span>
             <br />
-            <!-- Bluetooth return value: <span id="bluetooth"> </span> -->
           </p>
         </div>
       </div>
-    </div>
+    </div> -->
   </body>
 
   <head>
@@ -80,11 +83,25 @@
   </head>
   <body>
     <h1>Intruder Alert</h1>
-    <img
-      id="intruderGif"
-      src="./uploads/intruder.gif"
-      alt="Intruder GIF"
-      style="width: 640px; height: auto; border: 1px solid black"
-    />
+    <div class="container">
+      <div class="image-container">
+        <h2>Live Camera Feed</h2>
+        <img
+          id="intruderImage"
+          src="./uploads/intruder.jpg"
+          alt="Intruder Image"
+          style="width: 100%; height: auto; border: 1px solid black"
+        />
+      </div>
+      <div class="image-container">
+        <h2>Intruder Detection History</h2>
+        <img
+          id="intruderGif"
+          src="./uploads/intruder.gif"
+          alt="Intruder GIF"
+          style="width: 100%; height: auto; border: 1px solid black"
+        />
+      </div>
+    </div>
   </body>
 </html>
